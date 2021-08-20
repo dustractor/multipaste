@@ -38,20 +38,42 @@ class MULTIPASTE_OT_multipaste(bpy.types.Operator):
     bl_idname = "multipaste.multipaste"
     bl_label = "multi paste operator"
     def execute(self,context):
-        import win32clipboard
+        try:
+            import win32clipboard
+        except ImportError:
+            print("is pywin32 installed? (try doing that)")
+        _list = []
         win32clipboard.OpenClipboard()
-        t = win32clipboard.GetClipboardData(win32clipboard.CF_HDROP)
-        win32clipboard.CloseClipboard()
-        for f in t:
-            if f.endswith(".svg"):
-                bpy.ops.import_curve.svg(filepath=f)
-                print("f:",f)
-            elif f.endswith(".obj"):
-                bpy.ops.import_scene.obj(filepath=f)
-            elif f.endswith(".dae"):
-                bpy.ops.wm.collada_import(filepath=f)
-            elif f.endswith(".ply"):
-                bpy.ops.import_mesh.ply(filepath=f)
+        try:
+            text = win32clipboard.GetClipboardData()
+            _list += [text]
+
+        except TypeError:
+            _list = win32clipboard.GetClipboardData(win32clipboard.CF_HDROP)
+        finally:
+            win32clipboard.CloseClipboard()
+        for text in _list:
+            try:
+                exists = pathlib.Path(text).exists()
+            except OSError:
+                print("The following clipboard content does not appear to be a list of files:")
+                print("-------->")
+                print(text)
+                print("<--------")
+            if text.endswith(".svg"):
+                bpy.ops.import_curve.svg(filepath=text)
+            elif text.endswith(".obj"):
+                bpy.ops.import_scene.obj(filepath=text)
+            elif text.endswith(".dae"):
+                bpy.ops.wm.collada_import(filepath=text)
+            elif text.endswith(".ply"):
+                bpy.ops.import_mesh.ply(filepath=text)
+            elif text.endswith(".stl"):
+                bpy.ops.import_mesh.stl(filepath=text)
+            else:
+                print("recieved a file whose extension has no handler:")
+                print(text)
+
 
         print("ok")
         return {"FINISHED"}
